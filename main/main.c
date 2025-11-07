@@ -28,8 +28,9 @@ void app_main(void)
     {     
       RFID_config(&conf);
       RFID_transceive(&conf);
-  
-        vTaskDelay(pdMS_TO_TICKS(500));
+      RFID_anticollision(&conf);
+      RFID_send_SAK(&conf);
+      vTaskDelay(pdMS_TO_TICKS(500));
     }
     
     

@@ -72,10 +72,10 @@ void spi_write(uint8_t addr, uint8_t tx_data)
         ESP_LOGE(TAG, "SPI write unsuccessful");
     }
     
-    else 
+    /*else 
     {   
         ESP_LOGI(TAG, "send data from master %x",write_trans.tx_data[0] );
-    }
+    }*/
 
 
 }
@@ -100,10 +100,10 @@ uint8_t spi_read( uint8_t addr)
         ESP_LOGE(TAG, "SPI read unsuccessful");
     }
     
-    else 
+    /*else 
     {
         ESP_LOGI(TAG, "SPI read successful");
-    }
+    }*/
 
     return buff;
     
