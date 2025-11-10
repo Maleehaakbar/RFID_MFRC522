@@ -6,14 +6,16 @@
 
 const char * TAG_RFID ="RFID";
  uint8_t rcv_buff[5];          /*buffer to receive uuid bytes and BCC*/
+ uint8_t txlastbits = false;
 #define START_SEND 1
 #define txWaitRF 1
 
 #define CRCIRq_mask  0x20
 
+void RFID_transceive(configRF *config_RF);
+
 void RFID_config(configRF *config_RF)
 {   
-
     spi_write(WRITE_REG(CommandReg), SOFT_RESET << BIT_NO_0);
     vTaskDelay(pdMS_TO_TICKS(500));
     spi_write(WRITE_REG(TxModeReg), (config_RF->TxCRCEnable << BIT_NO_7 | config_RF->TxSpeed << BIT_NO_4));
@@ -26,49 +28,84 @@ void RFID_config(configRF *config_RF)
 }
 
 void RFID_transceive(configRF *config_RF)
-{   uint8_t buff[2];
+{   
     uint8_t fifo_level;
+
+    /*send transcieve command*/
+    spi_write(WRITE_REG(CommandReg), (config_RF->rcv << BIT_NO_5| config_RF->command << BIT_NO_0));  
     
-    vTaskDelay(pdMS_TO_TICKS(5));
-    spi_write(WRITE_REG(FIFODataReg), REQA);             /*send request(REQA) command*/
-    spi_write(WRITE_REG(BitFramingReg),7 << BIT_NO_0);   /*set bit length to 7*/
-    spi_write(WRITE_REG(CommandReg), (config_RF->rcv << BIT_NO_5| config_RF->command << BIT_NO_0));  //send transcieve command
-    spi_write(WRITE_REG(BitFramingReg),START_SEND << BIT_NO_7 | 7 << BIT_NO_0);   //set start_send bit
-    vTaskDelay(pdMS_TO_TICKS(500));
-    spi_write(WRITE_REG(BitFramingReg),0 << BIT_NO_7 );          //stop send
- 
-    vTaskDelay(pdMS_TO_TICKS(500));
-    spi_write(WRITE_REG(CommandReg), (config_RF->rcv << BIT_NO_5| IDLE << BIT_NO_0));
-    fifo_level= spi_read(READ_REG(FIFOLevelReg));
-    for(uint8_t i=0; i<2; i++)
-    {
-        buff[i] = spi_read(READ_REG(FIFODataReg));     /*read ATQA*/
-        ESP_LOGI(TAG_RFID, "received byte from tag %x", buff[i]); 
+    if(txlastbits)
+    {   
+        /*start send and set bit length to 7*/
+        spi_write(WRITE_REG(BitFramingReg),START_SEND << BIT_NO_7 | 7 << BIT_NO_0);   
+    }
+
+    else 
+    {   
+        /*start send */
+        spi_write(WRITE_REG(BitFramingReg),START_SEND << BIT_NO_7);
     }
     
+    vTaskDelay(pdMS_TO_TICKS(500));
+
+    /*stop transmision*/
+    spi_write(WRITE_REG(BitFramingReg),0 << BIT_NO_7 );         
+    spi_write(WRITE_REG(CommandReg), (config_RF->rcv << BIT_NO_5| IDLE << BIT_NO_0));
+
+    /*read fifo level*/
+    fifo_level= spi_read(READ_REG(FIFOLevelReg));
     ESP_LOGI(TAG_RFID, "received fifo level %x", fifo_level);
-    spi_write(WRITE_REG(FIFOLevelReg), 1<< BIT_NO_7);   /*Flush the buffer*/
+
 }
 
+uint8_t RFID_tag_detect(configRF *config_RF)
+{
+    uint8_t buff[2];
+    uint16_t resp;
+    txlastbits = true;
+    vTaskDelay(pdMS_TO_TICKS(5));
+
+    spi_write(WRITE_REG(FIFODataReg), REQA);    
+    RFID_transceive(config_RF);
+    
+    for(uint8_t i=0; i<2; i++)
+    {   
+        /*read ATQA*/
+        buff[i] = spi_read(READ_REG(FIFODataReg));     
+        ESP_LOGI(TAG_RFID, "received byte from tag %x", buff[i]); 
+    }
+
+    resp = buff[0] <<8 | buff[1];
+
+    /*Flush the buffer*/
+    spi_write(WRITE_REG(FIFOLevelReg), 1<< BIT_NO_7);  
+
+    if(resp == ATQA_COMMAND)
+    {
+        ESP_LOGI(TAG_RFID, "TAG detected in RFID field");
+        return 1;
+    }
+
+    else 
+    {
+        ESP_LOGE(TAG_RFID, "No tag detected");
+        return 0;
+    }
+}
 
 void RFID_anticollision(configRF *config_RF)
 {  
-    uint8_t fifo_level, uuid_xor;
+    uint8_t uuid_xor;
+    txlastbits = false;
     spi_write(WRITE_REG(FIFODataReg), SEL_CL1);
     spi_write(WRITE_REG(FIFODataReg), ANTI_COLL);
-    spi_write(WRITE_REG(CommandReg), (config_RF->rcv << BIT_NO_5| config_RF->command << BIT_NO_0));  //send transcieve command
-    spi_write(WRITE_REG(BitFramingReg),START_SEND << BIT_NO_7);   //set start_send bit
-     vTaskDelay(pdMS_TO_TICKS(500));
-    spi_write(WRITE_REG(BitFramingReg),0 << BIT_NO_7 );  
-    spi_write(WRITE_REG(CommandReg), (config_RF->rcv << BIT_NO_5| IDLE << BIT_NO_0));
-    fifo_level= spi_read(READ_REG(FIFOLevelReg));
-      for(uint8_t i=0; i<5; i++)
+    RFID_transceive(config_RF);
+
+    for(uint8_t i=0; i<5; i++)
     {
         rcv_buff[i] = spi_read(READ_REG(FIFODataReg));    
         ESP_LOGI(TAG_RFID, "received uuid bytes %x", rcv_buff[i]); 
     }
-
-    ESP_LOGI(TAG_RFID, "received fifo level for uuid bytes %x", fifo_level);
     uuid_xor = rcv_buff[0] ^ rcv_buff[1] ^ rcv_buff[2] ^ rcv_buff[3];
 
     if (uuid_xor != rcv_buff[4])
@@ -78,15 +115,15 @@ void RFID_anticollision(configRF *config_RF)
     
     else 
     {
-        ESP_LOGI(TAG_RFID, "received valid uuid"); /*not good error handling, even if all bytes are zero , */
+        ESP_LOGI(TAG_RFID, "received valid uuid"); 
     }
 
-    spi_write(WRITE_REG(FIFOLevelReg), 1<< BIT_NO_7);   /*Flush the buffer*/
+    spi_write(WRITE_REG(FIFOLevelReg), 1<< BIT_NO_7);
 }
 
 void RFID_send_SAK(configRF *config_RF)
-{   uint8_t CRC_status, CRC_H, CRC_L, fifo_level,SAK_byte;
-   
+{   uint8_t CRC_status, CRC_H, CRC_L, SAK_byte;
+    txlastbits = false;
     spi_write(WRITE_REG(FIFODataReg), SEL_CL1);
     spi_write(WRITE_REG(FIFODataReg), SELECT_COMMAND);
     
@@ -96,7 +133,7 @@ void RFID_send_SAK(configRF *config_RF)
     }
     
     /*calcuate CRC over FIFO content*/
-    spi_write(WRITE_REG(CommandReg), CALC_CRC << BIT_NO_0); /*write calculate CRC command to cmdregister*/
+    spi_write(WRITE_REG(CommandReg), CALC_CRC << BIT_NO_0); 
 
     do 
     {
@@ -108,8 +145,7 @@ void RFID_send_SAK(configRF *config_RF)
     CRC_H = spi_read(READ_REG(CRCResultRegH));
     
     spi_write(WRITE_REG(CommandReg), (config_RF->rcv << BIT_NO_5| IDLE << BIT_NO_0));
-
-    spi_write(WRITE_REG(FIFOLevelReg), 1<< BIT_NO_7);   /*Flush the buffer*/
+    spi_write(WRITE_REG(FIFOLevelReg), 1<< BIT_NO_7); 
     
     spi_write(WRITE_REG(FIFODataReg), SEL_CL1);
     spi_write(WRITE_REG(FIFODataReg), SELECT_COMMAND);
@@ -122,16 +158,8 @@ void RFID_send_SAK(configRF *config_RF)
 
     spi_write(WRITE_REG(FIFODataReg), CRC_L);
     spi_write(WRITE_REG(FIFODataReg), CRC_H);
-
-    /*tranceive procedure*/
-    spi_write(WRITE_REG(CommandReg), (config_RF->rcv << BIT_NO_5| config_RF->command << BIT_NO_0));  //send transcieve command
-    spi_write(WRITE_REG(BitFramingReg),START_SEND << BIT_NO_7);   //set start_send bit
-    vTaskDelay(pdMS_TO_TICKS(50));
-    spi_write(WRITE_REG(BitFramingReg),0 << BIT_NO_7 );  
-    spi_write(WRITE_REG(CommandReg), (config_RF->rcv << BIT_NO_5| IDLE << BIT_NO_0));
-    fifo_level= spi_read(READ_REG(FIFOLevelReg));
+    RFID_transceive(config_RF);
     SAK_byte = spi_read(READ_REG(FIFODataReg));
-    ESP_LOGI(TAG_RFID, "received fifo level for SAK %x", fifo_level);
     ESP_LOGI(TAG_RFID, "SAK byte %x", SAK_byte );
     if ((SAK_byte & 0x4) ==0X4)
     {
@@ -140,7 +168,7 @@ void RFID_send_SAK(configRF *config_RF)
 
     else
     {
-        ESP_LOGI(TAG_RFID, "uuid complete");     /*not a good error handling as if there is zero becoz of no data receive, it gives uuid complete */
+        ESP_LOGI(TAG_RFID, "uuid complete"); 
     }
 }
 

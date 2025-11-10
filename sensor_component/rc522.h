@@ -126,13 +126,10 @@ typedef enum {
 #define SEL_CL1         0x93   /*select cascade level 1*/
 #define ANTI_COLL       0x20
 #define SELECT_COMMAND  0x70
-
-
-
-//txwaitRF bit , RxWait bit ,MfTxReg
+#define ATQA_COMMAND    0x400
 
 void RFID_config(configRF *config_RF);
-void RFID_transceive(configRF *config_RF);
+uint8_t RFID_tag_detect(configRF *config_RF);
 void RFID_anticollision(configRF *config_RF);
 void RFID_send_SAK(configRF *config_RF);
 #endif // RC522_H

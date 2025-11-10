@@ -3,9 +3,11 @@
 #include "spi.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "esp_log.h"
 
-  configRF conf;
-
+configRF conf;
+uint8_t tag_detect;
+static const char* TAG_MAIN = "RFID_APP";
    
 
 void app_main(void)
@@ -27,9 +29,17 @@ void app_main(void)
     while(1)
     {     
       RFID_config(&conf);
-      RFID_transceive(&conf);
-      RFID_anticollision(&conf);
-      RFID_send_SAK(&conf);
+      tag_detect = RFID_tag_detect(&conf);
+      if(tag_detect)
+      {
+        RFID_anticollision(&conf);
+        RFID_send_SAK(&conf);
+      }
+      else 
+      {
+        ESP_LOGW(TAG_MAIN, "Wait for TAG");
+      }
+    
       vTaskDelay(pdMS_TO_TICKS(500));
     }
     

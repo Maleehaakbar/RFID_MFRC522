@@ -67,6 +67,7 @@ void spi_write(uint8_t addr, uint8_t tx_data)
     write_trans.flags = SPI_TRANS_USE_TXDATA;
     write_trans.tx_data[0] = tx_data;
     ret = spi_device_polling_transmit(spi_handle,&write_trans);
+   
     if(ret!=ESP_OK)
     {
         ESP_LOGE(TAG, "SPI write unsuccessful");
@@ -93,17 +94,11 @@ uint8_t spi_read( uint8_t addr)
     read_trans.flags = SPI_TRANS_USE_RXDATA;
   
     ret = spi_device_polling_transmit(spi_handle,&read_trans);
-
     buff = read_trans.rx_data[0];
     if(ret!=ESP_OK)
     {
         ESP_LOGE(TAG, "SPI read unsuccessful");
     }
-    
-    /*else 
-    {
-        ESP_LOGI(TAG, "SPI read successful");
-    }*/
 
     return buff;
     

@@ -11,6 +11,7 @@
     "IDF_TARGET": "esp32s3"
   },
   "files.associations": {
-    "spi_master.h": "c"
+    "spi_master.h": "c",
+    "esp_intr_types.h": "c"
   }
 }
