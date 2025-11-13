@@ -172,6 +172,13 @@ void RFID_send_SAK(configRF *config_RF)
     }
 }
 
+uint32_t uuid_bytes(void)
+{
+    uint32_t uuid;
+    uuid = rcv_buff[0] << 24 | rcv_buff[1] << 16 | rcv_buff[2] << 8 | rcv_buff[3];
+    return uuid;
+}
+
 
 
 

@@ -12,6 +12,7 @@
   },
   "files.associations": {
     "spi_master.h": "c",
-    "esp_intr_types.h": "c"
+    "esp_intr_types.h": "c",
+    "esp_lcd_panel_ssd1306.h": "c"
   }
 }

@@ -132,4 +132,5 @@ void RFID_config(configRF *config_RF);
 uint8_t RFID_tag_detect(configRF *config_RF);
 void RFID_anticollision(configRF *config_RF);
 void RFID_send_SAK(configRF *config_RF);
+uint32_t uuid_bytes(void);
 #endif // RC522_H
