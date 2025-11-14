@@ -2,6 +2,6 @@
 #define SERVO_H
 
 void servo_init();
-//void servo_on();
+void servo_on();
 
 #endif

@@ -3,7 +3,7 @@
 #include "servo.h"
 #include "freertos/FreeRTOS.h"
 
-#define SERVO_PIN  6
+#define SERVO_PIN  4
 
 const char* TAG_SERVO = "servo_app";
 void servo_on();
@@ -11,8 +11,8 @@ void servo_init()
 {   
     servo_config_t servo_cfg = {
         .max_angle = 180,
-        .min_width_us = 500,
-        .max_width_us = 2500,
+        .min_width_us = 500,   /*0.5ms = 0 (angle) = 2.5% duty cycle*/
+        .max_width_us = 2500,  /*2.5ms =180(angle) =2.4% PWM duty cycle*/
         .freq = 50 ,
         .timer_number = LEDC_TIMER_0 ,
         .channels = {
@@ -31,11 +31,11 @@ void servo_init()
 
 void servo_on()
 {   
-   float read_angle;
-    float angle = 100.00f;
-    iot_servo_write_angle(LEDC_LOW_SPEED_MODE, 0,angle);
-    iot_servo_read_angle(LEDC_LOW_SPEED_MODE , 0, &read_angle);
-    ESP_LOGI(TAG_SERVO, "servo current angle %f", read_angle);
+    for (uint8_t i=0; i<30; i++)
+    {
+        iot_servo_write_angle(LEDC_LOW_SPEED_MODE, 0,i);
+    }
+  
 
 }
 

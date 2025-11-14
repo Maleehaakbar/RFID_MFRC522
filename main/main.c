@@ -9,27 +9,28 @@
 #include "oled.h"
 #include "lvgl.h"
 
-configRF conf;
+
 uint8_t tag_detect;
 static const char* TAG_MAIN = "RFID_APP";
 uint32_t display_uuid;
 
+configRF conf = {
+    .rcv = rcv_on,
+    .command = TRANSCEIVE,
+    .driver_sel = 1,
+    .Force100ASK = 1,
+    .Rx_multiple = 0,
+    .Tx2CW = 0,
+    .Tx2RFEnable = ENABLE,
+    .Tx1RFEnable = ENABLE,
+    .RxSpeed = TX_RATE_106_KBD,
+    .TxSpeed = TX_RATE_106_KBD,
+    .RxCRCEnable = DISABLE,
+    .TauRcv = 1,
+};
+
 void app_main(void)
 { 
-   
-    conf.rcv = rcv_on;
-    conf.command = TRANSCEIVE;
-    conf.driver_sel = 1;
-    conf.Force100ASK = 1;
-    conf.Rx_multiple = 0;
-    conf.Tx2CW = 0;
-    conf.Tx2RFEnable = ENABLE;
-    conf.Tx1RFEnable = ENABLE;
-    conf.RxSpeed = TX_RATE_106_KBD;
-    conf.TxSpeed = TX_RATE_106_KBD;
-    conf.RxCRCEnable = DISABLE;
-    conf.TauRcv = 1;
-
     spi_init();
     servo_init();
     oled_init();
@@ -55,7 +56,7 @@ void app_main(void)
         lv_label_set_text(label, "No tag present\n");
       
       }
-      
+   
       vTaskDelay(pdMS_TO_TICKS(500));
     }
     
